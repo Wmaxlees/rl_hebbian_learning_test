@@ -55,6 +55,8 @@ def main (argv):
                 output = graph.predict(input_val, 0.2)
                 action = output[observation_space:observation_space+action_space]
 
+            graph.save('graph.npy')
+
     env.close()
 
 

@@ -18,12 +18,7 @@ TODO:
 class Graph (object):
     def __init__ (self, order):
         print('Generating graph of size %d.' % (order, ))
-        self._nodes = []
-        for idx in range(order):
-            if idx % 1000 == 0:
-                print('Node %d complete.' % (idx, ))
-
-            self._nodes.append(Node(order, 1/order))
+        self._nodes = np.random.normal(size=(order, order, ), scale=1/order)
         print('Generation complete.')
 
 
@@ -52,17 +47,16 @@ class Graph (object):
         bit_array[x] = 1
 
         # Calculate the new output then update weights
-        weights = np.zeros(len(self._nodes))
-        for node in np.array(self._nodes)[x]:
-            weights = weights + node.get_weights()
-            node.increase_weights(bit_array, 0.1)
+        output = np.sum(self._nodes[x], axis=1)
+        self._nodes[x] += bit_array * 0.1
 
         # Degrade all weights
-        for node in self._nodes:
-            node.degrade(0.03)
+        self._nodes = self._nodes - 0.03
+
+        self._truncate_weights()
 
         # Return the average activation
-        return weights / len(x)
+        return output / len(x)
 
     def predict (self, x, φ):
         # Reduce by φ and take the max between x and 0
@@ -71,16 +65,23 @@ class Graph (object):
         # Get all nonzero values
         x = np.nonzero(x)
 
-
         # Calculate the new output
-        weights = np.zeros(len(self._nodes))
-        for node in np.array(self._nodes)[x]:
-            weights = weights + node.get_weights()
+        output = np.sum(self._nodes[x], axis=0)
 
         # Return the average activation
-        return weights / len(x)
+        return output / len(x)
 
 
+    def load (self, name):
+        self._nodes = np.load(name)
+
+
+    def save (self, name):
+        np.save(name, self._nodes)
+
+
+    def _truncate_weights (self):
+        self._weights = np.minimum(np.maximum(self._nodes, 0), 1)
 
 
 if __name__ == '__main__':
