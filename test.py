@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import cudamat as cm
 import gym
 import numpy as np
 import random
@@ -14,6 +15,8 @@ graph_size = 600
 def main (argv):
     global episodes
     global graph_size
+
+    cm.init()
 
     env = gym.make('SpaceInvaders-v0')
 
@@ -44,7 +47,7 @@ def main (argv):
             x = graph(input_val, 0.2)
             x = x[observation_space+action_space:-1]
 
-            env.render()
+            # env.render()
 
             # Select next action
             if random.random() < 0.3:
@@ -55,9 +58,10 @@ def main (argv):
                 output = graph.predict(input_val, 0.2)
                 action = output[observation_space:observation_space+action_space]
 
-            graph.save('graph.npy')
+        graph.save('graph.npy')
 
     env.close()
+    cm.shutdown()
 
 
 def create_input (observation, action, x, reward):

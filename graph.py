@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import cudamat as cm
 import numpy as np
 
 from node import Node
@@ -37,18 +38,25 @@ class Graph (object):
             numpy.ndarray: The new output from the network.
         """
         # Reduce by φ and take the max between x and 0
-        x = np.maximum(x - φ, 0)
+        cuda_x = cm.CUDAMatrix(np.array([x]))
+        cuda_x.add(-φ, target=cuda_x)
+        cuda_x.copy_to_host()
+        cuda_x.numpy_array = np.maximum(cuda_x.numpy_array[0], 0)
 
         # Get all nonzero values
-        x = np.nonzero(x)
+        indices = np.nonzero(cuda_x.numpy_array)
 
         # Generate the bit array for weight updating
         bit_array = np.zeros(len(self._nodes))
-        bit_array[x] = 1
+        bit_array[indices] = 1
 
         # Calculate the new output then update weights
-        output = np.sum(self._nodes[x], axis=1)
-        self._nodes[x] += bit_array * 0.1
+        cuda_in = cm.CUDAMatrix(self._nodes[indices])
+        cuda_out = cm.empty((1, len(x)))
+        cuda_in.sum(axis=0, target=cuda_out)
+        cuda_out.mult(len(x))
+        output = cuda_out.asarray()[0]
+        self._nodes[indices] += bit_array * 0.1
 
         # Degrade all weights
         self._nodes = self._nodes - 0.03
@@ -60,16 +68,22 @@ class Graph (object):
 
     def predict (self, x, φ):
         # Reduce by φ and take the max between x and 0
-        x = np.maximum(x - φ, 0)
+        cuda_x = cm.CUDAMatrix(np.array([x]))
+        cuda_x.add(-φ, target=cuda_x)
+        cuda_x.copy_to_host()
+        cuda_x.numpy_array = np.maximum(cuda_x.numpy_array[0], 0)
 
         # Get all nonzero values
-        x = np.nonzero(x)
+        indices = np.nonzero(cuda_x.numpy_array)
 
         # Calculate the new output
-        output = np.sum(self._nodes[x], axis=0)
+        cuda_in = cm.CUDAMatrix(self._nodes[indices])
+        cuda_out = cm.empty((1, len(x)))
+        cuda_in.sum(axis=0, target=cuda_out)
+        cuda_out.mult(len(x))
+        output = cuda_out.asarray()[0]
 
-        # Return the average activation
-        return output / len(x)
+        return output
 
 
     def load (self, name):
